@@ -1,21 +1,21 @@
-function sleep(ms) {
-    return new Promise(resolve => setTimeout(resolve, ms));
+// Chart configs
+// The number of points along the x-axis we want to maintain.
+const X_AXIS_MAX_LENGTH = 4;  
+  
+// 5 second. For whatever reason the render time takes some extra time.
+// 5 seconds appears to work. 1 second does not.
+const TIMEOUT = 5000;
+
+// Generates data but this is probably where you want to make your call to
+// get the server data.
+async function generateData() {
+  while(true) {
+    // Gets the data from a server? For now it is a random number.
+    const data = Math.random() * 10;
+    addData(data);
+    await new Promise(resolve => setTimeout(resolve, TIMEOUT));
+  }
 }
-
-async function setInterval() {
-    for (let i = 0; i < 6; i++) {
-        updateData(i)
-        await sleep(1000);
-        if (i > 4){
-            i = 0;
-        }
-    }
-}
-
-setInterval();
-
-
-
 
 // Chart Objects
 let cpuUsageChart = document.getElementById("cpuUsage");
@@ -54,7 +54,6 @@ let commonOptions = {
     }
 };
 
-
 // cpuUsageChart Instance
 var cpuUsageChartInstance = new Chart(cpuUsageChart, {
     type: 'line',
@@ -76,51 +75,39 @@ var cpuUsageChartInstance = new Chart(cpuUsageChart, {
 });
 
 
-// Chart configs
-let numberElements = 4;
-
-//Globals
-let updateCount = 0;
-
 // Function to push data to chart object instances
 function addData(data) {
+  if(!data) {
+    // Quit early, data is null
+    return;
+  }
 
-    if(data){
-        console.log(updateCount, numberElements, data)
+  // Get the date time for the label.
+  const today = new Date();
+  const hrs = today.getHours().toString();
+  const mins = today.getMinutes().toString();
+  const secs = today.getSeconds().toString();
+  const time =
+      `${hrs.padStart(2, '0')}:${mins.padStart(2, '0')}:${secs.padStart(2, '0')}`;
 
-        let today = new Date();
-        let time
-        if (today.getMinutes < 10){
-            time = today.getHours() + ":0" + today.getMinutes();
-        }else{
-            time = today.getHours() + ":" + today.getMinutes();
-        }
-        // CPU Usage
-        cpuUsageChartInstance.data.labels.push(time);
-        cpuUsageChartInstance.data.datasets.forEach((dataset) =>{dataset.data.push(data)});
+  // CPU Usage
+  // Adding new data
+  cpuUsageChartInstance.data.labels.push(time);
+  cpuUsageChartInstance.data.datasets.forEach(
+      (dataset) =>{dataset.data.push(data)});
+  
+  // Check if the cpu usage list is longer than the desired length, if it is
+  // we should remove the first element by shifting the x axis markers.
+  if(cpuUsageChartInstance.data.labels.length > X_AXIS_MAX_LENGTH) {
+    cpuUsageChartInstance.data.labels.shift();
+    cpuUsageChartInstance.data.datasets.forEach(
+      (dataset) =>{dataset.data.shift()});
+  }
 
-      if(updateCount > numberElements){
-        console.log(updateCount)
-        // For shifting the x axis markers
-        // CPU Usage
-        cpuUsageChartInstance.data.labels.splice(0, numberElements + 3);
-        cpuUsageChartInstance.data.datasets[0].data.splice(0, numberElements + 3);
-        console.log(cpuUsageChartInstance.data.datasets[0].data)
-        console.log(cpuUsageChartInstance.data.datasets[0].data)
-        updateCount=0;
+  // The HTML update call.
+  cpuUsageChartInstance.update();
+};
 
-        
-      }else{
-        updateCount++
-        console.log('up count greater than num elms')
-        cpuUsageChartInstance.update();
-      }
-    }
-      
-  };
-
-  // Update HTML elements
-function updateData(data) {
-    addData(data)
-}
-updateData()
+// Generates data and calls the add data that is responsible for updating
+// the chart.
+generateData();
